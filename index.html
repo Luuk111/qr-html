@@ -1,11 +1,546 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <title>QR Pagina</title>
+<meta charset="UTF-8">
+<title>🎄 Secret Santa 🎁</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- =====================
+     CSS – uiterlijk
+     ===================== -->
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg,#c31432,#240b36);
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+.box {
+  background: rgba(0,0,0,0.55);
+  padding: 20px;
+  border-radius: 15px;
+  max-width: 700px;
+  margin: auto;
+}
+.hidden { display:none; }
+input, button {
+  padding: 10px;
+  font-size: 16px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+}
+button { cursor:pointer; }
+
+/* Tic Tac Toe */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3,100px);
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.cell {
+  width: 100px;
+  height: 100px;
+  background: white;
+  color: black;
+  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+/* Memory (Simon) */
+#simon {
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  margin-top:20px;
+}
+.simon-btn {
+  width:100px;
+  height:100px;
+  border-radius:12px;
+  opacity:0.9;
+  box-shadow: 0 4px rgba(0,0,0,0.2);
+}
+.green{ background:#2ecc71; }
+.red{ background:#e74c3c; }
+.blue{ background:#3498db; }
+.yellow{ background:#f1c40f; color:#111; }
+
+/* Misc */
+.hints { text-align:left; margin-top:10px; background:rgba(255,255,255,0.06); padding:10px; border-radius:8px; }
+.small { font-size:14px; color:#ddd; }
+.final-answer { margin-top:15px; background:rgba(255,255,255,0.08); padding:10px; border-radius:8px; color:#fff; }
+</style>
 </head>
 <body>
-  <h1>QR-code werkt 🎉</h1>
-  <p>Deze pagina komt van GitHub Pages.</p>
+
+<!-- =====================
+     STAP 1 – NAAM (nog GEEN naam zichtbaar)
+     ===================== -->
+<div class="box" id="step1">
+  <h1>🎅 Secret Santa 🎅</h1>
+  <p>Vul je naam in om te zien of jij verder mag</p>
+  <input id="nameInput" placeholder="Je naam">
+  <br>
+  <button id="checkNameBtn">Verder</button>
+  <p id="nameError"></p>
+</div>
+
+<!-- =====================
+     STAP 2 – RAADSEL (3 pogingen, hints)
+     ===================== -->
+<div class="box hidden" id="step2">
+  <h2>🧩 Raadsel</h2>
+  <p>Wat wordt groter als je er meer van wegneemt?</p>
+  <input id="riddleInput" placeholder="Antwoord">
+  <br>
+  <button id="checkRiddleBtn">Check</button>
+  <p id="riddleInfo"></p>
+
+  <div class="hints">
+    <strong>Hints</strong>
+    <ol id="hintsList" class="small">
+      <li>Het heeft iets te maken met ruimte / leegte.</li>
+    </ol>
+    <p class="small">Na elke fout antwoord verschijnt een extra hint. Het echte antwoord wordt zichtbaar zodra je verder gaat.</p>
+  </div>
+
+  <div id="riddleAnswer" class="final-answer hidden">
+    Antwoord: <strong>gat</strong> (of "hole")
+  </div>
+</div>
+
+<!-- =====================
+     STAP 3 – TIC TAC TOE vs BOT (MOEILIJKER BOT, perfect play)
+     ===================== -->
+<div class="box hidden" id="step3">
+  <h2>❌⭕ Tic Tac Toe</h2>
+  <p>Versla de computer</p>
+  <div class="board" id="board"></div>
+  <p id="tttInfo"></p>
+  <div id="tttExplanation" class="small hidden">
+    De bot gebruikt een optimale strategie (minimax). Bij gelijk spel is de uitkomst vaak gelijkspel als je perfect speelt.
+  </div>
+
+  <div id="revealAfterTtt" class="final-answer hidden">
+    Riddle Antwoord: <strong id="riddleRevealText">gat</strong>
+  </div>
+</div>
+
+<!-- =====================
+     STAP 4 – NIEUWE MINIGAME: MEMORY (SIMON)
+     ===================== -->
+<div class="box hidden" id="step4">
+  <h2>🔁 Memory: Herhaal de sequentie</h2>
+  <p>Let goed op: de knoppen lichten op in een sequentie. Herhaal de sequentie om door te gaan.</p>
+  <div id="simon">
+    <div class="simon-btn green" data-color="0"></div>
+    <div class="simon-btn red" data-color="1"></div>
+    <div class="simon-btn blue" data-color="2"></div>
+    <div class="simon-btn yellow" data-color="3"></div>
+  </div>
+  <div style="margin-top:15px;">
+    <button id="startSimon">Start</button>
+    <p id="simonInfo">Klik 'Start' om te beginnen.</p>
+  </div>
+  <div id="simonHint" class="small"></div>
+</div>
+
+<!-- =====================
+     STAP 5 – GEDICHT (PAS HIER naam!)
+     ===================== -->
+<div class="box hidden" id="step5">
+  <h2>🎁 Dit cadeautje is voor jou, Julia 🎁</h2>
+
+  <p style="white-space:pre-line; margin-top:20px;">
+Lief Julia,
+
+Er was eens een meisje, vol energie en pret,
+Dat altijd lacht, sport en alles opzet.
+Iets moois voor jou, verstopt en geheim,
+Open het snel… het maakt je kerst helemaal fijn!
+Sneeuwvlokken dwarrelen, lichtjes glinsteren zacht,
+Een verrassing voor jou, met liefde uit jouw wensenlijstje gepakt.
+
+Pak het uit scheur hem open
+
+ik hoop dat de kleur goed doet en dat hij niet direct weg moet.
+Ook al is het niet de juiste kleur ik wil geen slecht humeur.
+
+🎄✨
+  </p>
+
+  <div class="final-answer">
+    Riddle Antwoord (ter herinnering): <strong id="finalRiddleAnswer">gat</strong>
+  </div>
+</div>
+
+<script>
+/* =====================
+   CONFIG: gemakkelijk aan te passen pauzes
+   ===================== */
+const BOT_DELAY = 600;             // vertraging voordat de bot zet (ms)
+const PAUSE_RIDDLE_TO_TTT = 1500;  // pauze nadat raadsel is opgelost voor overgang (ms)
+const POST_TTT_DELAY = 2500;       // pauze na einde TTT voor overgang naar Simon (ms)
+
+const SIMON_SHOW_SPEED = 900;      // basis snelheid voor tonen van Simon sequentie (ms tussen tonen)
+const SIMON_FLASH_DIV = 1.8;       // flash duration = SIMON_SHOW_SPEED / SIMON_FLASH_DIV
+const SIMON_RETRY_DELAY = 1200;    // wachttijd voordat sequentie opnieuw getoond wordt na fout (ms)
+const NEXTROUND_DELAY = 1200;      // pauze tussen ronden bij Simon (ms)
+const FINAL_TRANSITION_DELAY = 1600; // overgang naar eindscherm bij Simon (ms)
+
+
+/* =====================
+   HULPREFERENTIES
+   ===================== */
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const step3 = document.getElementById('step3');
+const step4 = document.getElementById('step4');
+const step5 = document.getElementById('step5');
+
+const nameInput = document.getElementById('nameInput');
+const nameError = document.getElementById('nameError');
+document.getElementById('checkNameBtn').addEventListener('click', checkName);
+
+/* =====================
+   STAP 1 – NAAM CHECK
+   ===================== */
+function checkName(){
+  if(nameInput.value.trim().toLowerCase()==="julia"){
+    step1.classList.add("hidden");
+    step2.classList.remove("hidden");
+  } else {
+    nameError.textContent="Sorry, jij mag niet verder 😉";
+  }
+}
+
+/* =====================
+   STAP 2 – RAADSEL MET MEER HINTS
+   ===================== */
+const riddleInput = document.getElementById('riddleInput');
+const riddleInfo = document.getElementById('riddleInfo');
+const hintsList = document.getElementById('hintsList');
+const riddleAnswerEl = document.getElementById('riddleAnswer');
+
+let tries = 0;
+const maxTries = 4;
+const hints = [
+  "Het heeft iets te maken met ruimte / leegte.",
+  "Het zit vaak in kaas, sok of in band.",
+  "Als je er meer van wegneemt, wordt het groter.",
+  "Kort woord: drie letters."
+];
+
+document.getElementById('checkRiddleBtn').addEventListener('click', checkRiddle);
+
+function checkRiddle(){
+  const val = riddleInput.value.trim().toLowerCase();
+  tries++;
+  if(val.includes("gat") || val.includes("hole")){
+    riddleInfo.textContent = "Goedzo! Dat is goed.";
+    revealRiddleAnswer();
+    setTimeout(()=> {
+      step2.classList.add("hidden");
+      // gebruik langere overgang
+      startTicTacToe();
+      step3.classList.remove("hidden");
+    }, PAUSE_RIDDLE_TO_TTT);
+    return;
+  }
+
+  if(tries < maxTries){
+    riddleInfo.textContent = `Fout. Nog ${maxTries-tries} poging(en).`;
+    // voeg volgende hint toe
+    const hintIndex = Math.min(tries, hints.length-1);
+    if(hints[hintIndex] && !Array.from(hintsList.children).some(li=>li.textContent===hints[hintIndex])){
+      const li = document.createElement('li');
+      li.textContent = hints[hintIndex];
+      hintsList.appendChild(li);
+    }
+  } else {
+    riddleInfo.textContent = "Oké, je mag door. Het antwoord wordt zichtbaar.";
+    revealRiddleAnswer();
+    setTimeout(()=> {
+      step2.classList.add("hidden");
+      startTicTacToe();
+      step3.classList.remove("hidden");
+    }, PAUSE_RIDDLE_TO_TTT);
+  }
+}
+
+function revealRiddleAnswer(){
+  riddleAnswerEl.classList.remove('hidden');
+  document.getElementById('finalRiddleAnswer').textContent = "gat";
+  document.getElementById('riddleRevealText').textContent = "gat";
+}
+
+/* =====================
+   STAP 3 – TIC TAC TOE (STERKE BOT MET MINIMAX)
+   ===================== */
+const boardEl = document.getElementById('board');
+const tttInfo = document.getElementById('tttInfo');
+const tttExplanation = document.getElementById('tttExplanation');
+const revealAfterTtt = document.getElementById('revealAfterTtt');
+
+let cells = [];
+let currentPlayer = 'X'; // speler X is altijd speler
+let gameOver = false;
+
+function startTicTacToe(){
+  // reset
+  cells = Array(9).fill(null);
+  boardEl.innerHTML = "";
+  gameOver = false;
+  tttInfo.textContent = "Jij bent X. Speel!";
+  tttExplanation.classList.add('hidden');
+  revealAfterTtt.classList.add('hidden');
+
+  for(let i=0;i<9;i++){
+    const c = document.createElement('div');
+    c.className = "cell";
+    c.dataset.index = i;
+    c.addEventListener('click', ()=>playerMove(i,c));
+    boardEl.appendChild(c);
+  }
+}
+
+// speler zet
+function playerMove(i, cell){
+  if(gameOver || cells[i]) return;
+  cells[i] = 'X';
+  cell.textContent = 'X';
+  if(checkWin(cells, 'X')){
+    gameOver = true;
+    tttInfo.textContent = "Je hebt gewonnen! Ongelooflijk!";
+    showPostTtt();
+    return;
+  }
+  if(isFull(cells)){
+    gameOver = true;
+    tttInfo.textContent = "Gelijkspel!";
+    showPostTtt();
+    return;
+  }
+  // bot zet met minimax na langere vertraging
+  setTimeout(()=> {
+    botMove();
+    if(checkWin(cells,'O')){
+      gameOver = true;
+      tttInfo.textContent = "De bot heeft gewonnen. Probeer het nog eens!";
+      showPostTtt();
+    } else if(isFull(cells)){
+      gameOver = true;
+      tttInfo.textContent = "Gelijkspel!";
+      showPostTtt();
+    } else {
+      tttInfo.textContent = "Jouw beurt.";
+    }
+  }, BOT_DELAY);
+}
+
+// betere bot: minimax (perfect)
+function botMove(){
+  const best = bestMove(cells);
+  if(best.index !== undefined){
+    cells[best.index] = 'O';
+    boardEl.children[best.index].textContent = 'O';
+  } else {
+    // fallback random
+    const empty = cells.map((v,i)=>v?null:i).filter(v=>v!==null);
+    if(empty.length) {
+      const idx = empty[Math.floor(Math.random()*empty.length)];
+      cells[idx] = 'O';
+      boardEl.children[idx].textContent = 'O';
+    }
+  }
+}
+
+function checkWin(b, player){
+  const w = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return w.some(line => line.every(i => b[i]===player));
+}
+
+function isFull(b){
+  return b.every(Boolean);
+}
+
+/* Minimax implementation */
+function bestMove(boardState){
+  // returns {index, score}
+  return minimax(boardState.slice(), 'O', 0, -Infinity, Infinity);
+}
+
+function minimax(boardState, player, depth, alpha, beta){
+  // terminal checks
+  if(checkWin(boardState, 'O')) return {score: 10 - depth};
+  if(checkWin(boardState, 'X')) return {score: depth - 10};
+  if(isFull(boardState)) return {score: 0};
+
+  const avail = boardState.map((v,i)=>v?null:i).filter(v=>v!==null);
+  if(player === 'O'){
+    let best = {score: -Infinity, index: null};
+    for(const i of avail){
+      boardState[i] = 'O';
+      const result = minimax(boardState, 'X', depth+1, alpha, beta);
+      boardState[i] = null;
+      if(result.score > best.score){
+        best = {score: result.score, index: i};
+      }
+      alpha = Math.max(alpha, best.score);
+      if(beta <= alpha) break; // pruning
+    }
+    return best;
+  } else {
+    let best = {score: Infinity, index: null};
+    for(const i of avail){
+      boardState[i] = 'X';
+      const result = minimax(boardState, 'O', depth+1, alpha, beta);
+      boardState[i] = null;
+      if(result.score < best.score){
+        best = {score: result.score, index: i};
+      }
+      beta = Math.min(beta, best.score);
+      if(beta <= alpha) break; // pruning
+    }
+    return best;
+  }
+}
+
+function showPostTtt(){
+  // laat uitleg en toon riddle antwoord (wens van gebruiker)
+  tttExplanation.classList.remove('hidden');
+  revealAfterTtt.classList.remove('hidden');
+
+  // na langere pauze verder naar Simon
+  setTimeout(()=> {
+    step3.classList.add('hidden');
+    step4.classList.remove('hidden');
+  }, POST_TTT_DELAY);
+}
+
+/* =====================
+   STAP 4 – MEMORY (SIMON) IMPLEMENTATIE
+   ===================== */
+const simonBtns = Array.from(document.querySelectorAll('.simon-btn'));
+const startSimonBtn = document.getElementById('startSimon');
+const simonInfo = document.getElementById('simonInfo');
+const simonHint = document.getElementById('simonHint');
+
+let sequence = [];
+let playerSeq = [];
+let playing = false;
+let level = 1;
+const maxLevel = 9; // aantal beurten om te halen
+
+startSimonBtn.addEventListener('click', startSimon);
+simonBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=> {
+    if(!playing) return;
+    const idx = Number(btn.dataset.color);
+    // langere flash feedback
+    flashButton(idx, SIMON_SHOW_SPEED / SIMON_FLASH_DIV);
+    playerSeq.push(idx);
+    checkPlayerSequence();
+  });
+});
+
+function startSimon(){
+  sequence = [];
+  playerSeq = [];
+  level = 1;
+  simonInfo.textContent = "Kijk goed...";
+  simonHint.textContent = "";
+  nextRound();
+}
+
+function nextRound(){
+  playing = false;
+  playerSeq = [];
+  // voeg een random kleur toe
+  sequence.push(Math.floor(Math.random()*4));
+  simonInfo.textContent = `Sequentie lengte: ${sequence.length}. Kijk...`;
+
+  // laat sequentie zien (langzamer)
+  let i = 0;
+  const interval = setInterval(()=> {
+    const idx = sequence[i];
+    flashButton(idx, SIMON_SHOW_SPEED / SIMON_FLASH_DIV);
+    i++;
+    if(i>=sequence.length){
+      clearInterval(interval);
+      setTimeout(()=> {
+        playing = true;
+        simonInfo.textContent = "Herhaal nu de sequentie.";
+      }, 400);
+    }
+  }, SIMON_SHOW_SPEED);
+}
+
+function flashButton(idx, time){
+  const btn = simonBtns[idx];
+  btn.style.transform = "scale(1.06)";
+  btn.style.filter = "brightness(1.2)";
+  setTimeout(()=> {
+    btn.style.transform = "";
+    btn.style.filter = "";
+  }, time);
+}
+
+function checkPlayerSequence(){
+  const i = playerSeq.length - 1;
+  if(playerSeq[i] !== sequence[i]){
+    // fout
+    simonInfo.textContent = "Fout! Probeer opnieuw.";
+    simonHint.textContent = "Tip: Let goed op de volgorde en probeer één stap per keer te onthouden.";
+    playing = false;
+    // reset en geef speler de kans opnieuw (zelfde sequence) na langere vertraging
+    playerSeq = [];
+    setTimeout(()=> {
+      simonInfo.textContent = "Opnieuw kijken...";
+      let j=0;
+      const interval = setInterval(()=> {
+        flashButton(sequence[j], SIMON_SHOW_SPEED / SIMON_FLASH_DIV);
+        j++;
+        if(j>=sequence.length){
+          clearInterval(interval);
+          setTimeout(()=> {
+            playing = true;
+            simonInfo.textContent = "Herhaal nu de sequentie.";
+          }, 400);
+        }
+      }, SIMON_SHOW_SPEED);
+    }, SIMON_RETRY_DELAY);
+    return;
+  }
+
+  // als compleet en correct
+  if(playerSeq.length === sequence.length){
+    if(sequence.length >= maxLevel){
+      simonInfo.textContent = "Je hebt gewonnen! Door naar het cadeautje...";
+      setTimeout(()=> {
+        step4.classList.add('hidden');
+        step5.classList.remove('hidden');
+      }, FINAL_TRANSITION_DELAY);
+    } else {
+      simonInfo.textContent = "Goed! Nog een stap.";
+      setTimeout(()=> nextRound(), NEXTROUND_DELAY);
+    }
+  }
+}
+
+/* =====================
+   START CONFIG
+   ===================== */
+startTicTacToe(); // voorbereid maar verborgen
+
+</script>
 </body>
 </html>
